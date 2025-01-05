@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>英単語クイズデータベース</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #f0f8ff, #87ceeb);
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      text-align: center;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #00509e;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px #d1e7ff;
+    }
+
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 10px;
+      color: #fff;
+      background: #007acc;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background: #00509e;
+      transform: scale(1.1);
+    }
+
+    button:disabled {
+      background: #c0c0c0;
+      cursor: not-allowed;
+    }
+
+    .data h2 {
+      font-size: 1.2em;
+    }
+
+    .data p {
+      font-size: 1em;
+      max-height: 200px; /* 適度な高さを設定 */
+      overflow-y: auto; /* スクロール可能に */
+      word-wrap: break-word; /* 長い単語を折り返し */
+      padding: 10px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+
+    #imageContainer img, #imageContainer video {
+      max-width: 600px;
+      max-height: 400px;
+      margin: 20px auto;
+      display: block;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    a {
+      color: #007acc;
+      text-decoration: underline;
+      font-weight: bold;
+      transition: color 0.3s;
+    }
+
+    a:hover {
+      color: #00509e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>英単語クイズデータベース</h1>
+
+    <button id="fetchQuestionButton">問題</button>
+    <button id="fetchAnswerButton" disabled>解答</button>
+
+    <div class="data">
+      <h2 id="name">問題: </h2>
+      <p id="text">解答: </p>
+      <p id="url"><a href="#" target="_blank">Notionで確認する</a></p>
+      <div id="imageContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    // スクリプトは変更不要
+    let currentData = null;
+
+    document.getElementById("fetchQuestionButton").addEventListener("click", async () => {
+      try {
+        const response = await fetch("http://localhost:3000/get-random-row");
+        if (!response.ok) throw new Error("Failed to fetch data");
+
+        const data = await response.json();
+        currentData = data;
+
+        // 問題を表示
+        document.getElementById("name").textContent = `問題: ${data.name}`;
+        document.getElementById("text").textContent = "解答: "; // 初期化
+        document.getElementById("url").querySelector("a").textContent = "Notionで確認する";
+        document.getElementById("url").querySelector("a").href = data.url;
+        document.getElementById("imageContainer").innerHTML = ""; // 初期化
+
+        // 解答ボタンを有効化
+        document.getElementById("fetchAnswerButton").disabled = false;
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Failed to fetch data. Check the console for details.");
+      }
+    });
+
+    document.getElementById("fetchAnswerButton").addEventListener("click", () => {
+      if (!currentData) {
+        alert("問題を先に取得してください。");
+        return;
+      }
+
+      // 解答を表示
+      document.getElementById("text").textContent = `解答: ${currentData.text}`;
+      const imageContainer = document.getElementById("imageContainer");
+      imageContainer.innerHTML = ""; // 初期化
+
+      // 画像と動画を表示
+      currentData.image.forEach((mediaFile) => {
+        const url = mediaFile?.url; // 安全にアクセス
+        if (!url) {
+          console.warn("No URL found for media file:", mediaFile);
+          return;
+        }
+
+        const isVideo = /\.(mp4)$/i.test(url);
+        const isImage = /\.(jpg|jpeg|png|gif)$/i.test(url);
+
+        if (isVideo || isImage || mediaFile.type === "file") {
+          const mediaElement = document.createElement(isVideo ? "video" : "img");
+          mediaElement.src = url;
+
+          if (isVideo) {
+            mediaElement.controls = true;
+            mediaElement.style.maxWidth = "600px";
+            mediaElement.style.maxHeight = "400px";
+          } else {
+            mediaElement.style.maxWidth = "600px";
+            mediaElement.style.display = "block";
+          }
+
+          imageContainer.appendChild(mediaElement);
+          console.log("Loaded media:", { url, type: mediaFile.type });
+        } else {
+          console.warn("Unsupported media file format:", { url, type: mediaFile.type });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
